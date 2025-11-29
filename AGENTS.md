@@ -126,9 +126,9 @@ The code should be organized into separate files to ensure no file exceeds 200 l
 - [x] **Mapping:** Create a function to map continuous world coordinates to integer terminal row/col.
 - [x] **Render Logic:**
     - **Field:** Iterate over terminal rows/cols. Convert back to world float coordinates. Query `dish.get_concentration`. Select ASCII char from map: ` .:-=+*#%@` (Empty to Dense).
-    - **Optimization:** Step by 2 pixels if rendering is slow.
+    - **Optimization:** Step by 1 pixel (high detail).
     - **Agent:** Draw the agent character (e.g., `O` or `Q`) at its integer position. Draw sensor markers (`'` or `.`) to indicate heading.
-    - **HUD:** Draw a text bar at the top: `Sens: {:.2f} | Tgt: {:.2f} | Err: {:.2f} | Spd: {:.2f}`.
+    - **HUD:** Draw a text bar at the top: `Sens: {:.2f} | Tgt: {:.2f} | Err: {:.2f} | Spd: {:.2f} | Egy: {:.2f}`.
 - [x] **Main Loop:**
     - Initialize `curses` (noecho, nodelay, curs_set 0).
     - Loop forever:
