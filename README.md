@@ -69,6 +69,7 @@ cargo clippy -- -D warnings
 
 ## 🧠 How it Works
 The agent follows the equation:
+
 $$
 \dot{\theta} \propto - \mathrm{Error} \times \mathrm{Gradient}
 $$
