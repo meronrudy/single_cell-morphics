@@ -1,5 +1,5 @@
 # Protozoa
-**Continuous Active Inference Simulation (Rust Port)**
+**Continuous Active Inference Simulation**
 
 Protozoa is a zero-player biological simulation where a single-cell agent navigates a nutrient-rich petri dish using the **Free Energy Principle (FEP)**. Unlike traditional AI that follows hard-coded rules, this agent operates by minimizing the difference between its genetic expectation (Homeostasis) and its actual sensory input.
 
