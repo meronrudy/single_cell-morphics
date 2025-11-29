@@ -53,14 +53,20 @@ $$\dot{\theta} = - \text{learning\_rate} \cdot E \cdot G + \text{Noise}$$
 **Speed Update:**
 The agent conserves energy. It only moves when "anxious" (high error).
 $$v = \text{max\_speed} \cdot |E|$$
-*Modulation:* Speed is reduced if Energy is depleted.
+*Modulation:* Speed is reduced (50%) if Energy is depleted (< 1%).
+
+**Metabolism (Proposal A Tuning):**
+*   **Cost:** Reduced to ~0.0025/tick (from ~0.006).
+*   **Intake:** Increased to 0.03 * mean_sense (from 0.01).
 
 ---
 
 ## 3. Implementation Plan & Checklist
 
 ### Class Structure
-The code should be organized into three classes: `PetriDish`, `Protozoa`, and `Simulation`.
+The code should be organized into separate files to ensure no file exceeds 200 lines of code.
+*   `simulation_core.py`: Contains `PetriDish` and `Protozoa` logic.
+*   `protozoa.py`: Contains `Simulation` (visualization) and entry point.
 
 ### Checklist for Coding Agent
 
@@ -124,3 +130,8 @@ The code should be organized into three classes: `PetriDish`, `Protozoa`, and `S
         4.  `render()`
         5.  `time.sleep(0.05)`
     - **Safety:** Use `try...finally` to ensure `curses.endwin()` is called even if the user crashes the script or hits Ctrl+C.
+
+#### Step 4: Quality Assurance
+- [x] **Linting:** Use `pylint`, `flake8`, `black` to ensure 10/10 code quality and PEP8 compliance.
+- [x] **Refactoring:** Ensure no file exceeds 200 lines of code by separating concerns (Simulation vs Core Logic).
+- [x] **Type Checking:** Use `mypy` to ensure type safety across the module.
