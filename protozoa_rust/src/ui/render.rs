@@ -176,20 +176,35 @@ fn draw_spatial_grid_panel(f: &mut Frame, area: Rect, state: &DashboardState) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    // Calculate agent's grid cell
-    let agent_col = ((state.x / 100.0) * state.grid_width as f64).floor() as usize;
+    // Determine target width based on available space
+    let target_width = (inner.width as usize).min(state.grid_width);
+
+    // Compress grid if needed
+    let display_cells = if target_width < state.grid_width {
+        compress_spatial_grid(
+            &state.spatial_grid,
+            state.grid_width,
+            state.grid_height,
+            target_width,
+        )
+    } else {
+        state.spatial_grid.clone()
+    };
+
+    let display_width = target_width.min(state.grid_width);
+
+    // Calculate agent's grid cell (in compressed coordinates)
+    let compression_ratio = state.grid_width as f64 / display_width as f64;
+    let agent_col =
+        ((state.x / 100.0) * state.grid_width as f64 / compression_ratio).floor() as usize;
     let agent_row = ((state.y / 50.0) * state.grid_height as f64).floor() as usize;
     let agent_cell = Some((
         agent_row.min(state.grid_height.saturating_sub(1)),
-        agent_col.min(state.grid_width.saturating_sub(1)),
+        agent_col.min(display_width.saturating_sub(1)),
     ));
 
-    let lines = render_spatial_grid_lines(
-        &state.spatial_grid,
-        state.grid_width,
-        state.grid_height,
-        agent_cell,
-    );
+    let lines =
+        render_spatial_grid_lines(&display_cells, display_width, state.grid_height, agent_cell);
     let text: Vec<Line> = lines
         .into_iter()
         .map(|s| Line::from(Span::raw(s)))
@@ -666,5 +681,47 @@ mod tests {
             "got {}",
             result[1].mean
         ); // avg(0.4, 0.6)
+    }
+
+    #[test]
+    fn test_spatial_grid_panel_handles_narrow_width() {
+        use crate::simulation::agent::AgentMode;
+        use crate::simulation::memory::CellPrior;
+        use crate::ui::DashboardState;
+        use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
+
+        let backend = TestBackend::new(15, 15); // Narrow terminal
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        let state = DashboardState {
+            x: 50.0,
+            y: 25.0,
+            angle: 1.0,
+            speed: 0.5,
+            energy: 0.8,
+            mode: AgentMode::Exploring,
+            prediction_error: -0.2,
+            precision: 5.0,
+            sensor_left: 0.6,
+            sensor_right: 0.5,
+            temporal_gradient: 0.03,
+            spatial_grid: vec![CellPrior::default(); 200], // 20x10 grid
+            grid_width: 20,
+            grid_height: 10,
+            plan_details: vec![],
+            ticks_until_replan: 15,
+            landmarks: vec![],
+            landmark_count: 0,
+            nav_target_index: None,
+        };
+
+        // Should not panic even with narrow width
+        terminal
+            .draw(|f| {
+                let area = Rect::new(0, 0, 15, 12);
+                draw_spatial_grid_panel(f, area, &state);
+            })
+            .unwrap();
     }
 }
