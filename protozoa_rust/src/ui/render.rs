@@ -1,4 +1,5 @@
 use crate::simulation::agent::AgentMode;
+use crate::simulation::memory::CellPrior;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -70,6 +71,51 @@ pub fn format_metrics_overlay(
         format!("L:{sensor_left:.2}  R:{sensor_right:.2}"),
         format!("\u{2202}t:{temporal_gradient:>6.2}"),
     ]
+}
+
+/// ASCII density characters for heat map visualization (low to high).
+#[allow(dead_code)] // Used by tests and will be used by dashboard renderer
+const DENSITY_CHARS: [char; 9] = [' ', '.', ',', ':', ';', '+', '*', '#', '@'];
+
+/// Converts a mean value (0.0-1.0) to an ASCII density character.
+#[allow(dead_code)] // Used by render_spatial_grid_lines
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+fn mean_to_char(mean: f64) -> char {
+    let idx = ((mean.clamp(0.0, 1.0)) * 8.0).round() as usize;
+    DENSITY_CHARS[idx.min(8)]
+}
+
+/// Renders spatial grid as ASCII lines.
+/// `agent_cell` is (row, col) of agent's current grid cell, if known.
+#[must_use]
+#[allow(dead_code)] // Used by tests and will be used by dashboard renderer
+pub fn render_spatial_grid_lines(
+    cells: &[CellPrior],
+    width: usize,
+    height: usize,
+    agent_cell: Option<(usize, usize)>,
+) -> Vec<String> {
+    let mut lines = Vec::with_capacity(height);
+
+    for row in 0..height {
+        let mut line = String::with_capacity(width);
+        for col in 0..width {
+            let idx = row * width + col;
+            if let Some(cell) = cells.get(idx) {
+                if agent_cell == Some((row, col)) {
+                    line.push('○');
+                } else {
+                    line.push(mean_to_char(cell.mean));
+                }
+            } else {
+                line.push(' ');
+            }
+        }
+        lines.push(line);
+    }
+
+    lines
 }
 
 pub fn draw_ui(f: &mut Frame, grid_lines: Vec<String>, hud_info: &str) {

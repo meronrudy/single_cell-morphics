@@ -1,9 +1,12 @@
 use protozoa_rust::simulation::agent::{AgentMode, Protozoa};
 use protozoa_rust::simulation::environment::PetriDish;
+use protozoa_rust::simulation::memory::CellPrior;
 use protozoa_rust::simulation::params::{DISH_HEIGHT, DISH_WIDTH};
 use protozoa_rust::ui::DashboardState;
 use protozoa_rust::ui::field::compute_field_grid;
-use protozoa_rust::ui::render::{compute_quadrant_layout, format_metrics_overlay};
+use protozoa_rust::ui::render::{
+    compute_quadrant_layout, format_metrics_overlay, render_spatial_grid_lines,
+};
 use ratatui::layout::Rect;
 
 #[test]
@@ -79,4 +82,23 @@ fn test_metrics_overlay_content() {
 
     // Second line should contain mode
     assert!(lines[1].contains("EXPLORING"));
+}
+
+#[test]
+fn test_spatial_grid_ascii_mapping() {
+    // Create a simple 4x2 grid
+    let mut cells = vec![CellPrior::default(); 8];
+
+    // Set different mean values
+    cells[0].mean = 0.0; // Should be ' '
+    cells[1].mean = 0.3; // Should be around ':'
+    cells[2].mean = 0.6; // Should be around '+'
+    cells[3].mean = 0.9; // Should be around '@'
+
+    let lines = render_spatial_grid_lines(&cells, 4, 2, None);
+
+    assert_eq!(lines.len(), 2);
+    // First row contains cells 0-3
+    assert!(lines[0].contains(' ')); // Low value
+    assert!(lines[1].len() >= 4);
 }
