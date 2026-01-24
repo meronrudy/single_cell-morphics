@@ -255,6 +255,27 @@ The project structure is strictly modularized to ensure files remain under 200 L
 - [x] **Formatting:** `cargo fmt`.
 - [x] **Tests:** `cargo test` passes (116 tests across 8 test files).
 
+### Mandatory Verification After Every Implementation
+
+**CRITICAL: After EVERY code change, run all three checks in order:**
+
+```bash
+cargo fmt                     # Format code (no arguments = auto-fix)
+cargo clippy -- -D warnings   # Lint with strictest settings (warnings = errors)
+cargo test                    # Run full test suite
+```
+
+**Requirements:**
+- All three must pass before committing
+- Zero tolerance for warnings - every clippy warning must be addressed
+- Every test must pass - no skipping or ignoring failures
+- Format must be applied - no manual formatting exceptions
+
+**If any check fails:**
+1. Fix the issue immediately
+2. Re-run all three checks
+3. Only commit when all pass
+
 ---
 
 ## See Also

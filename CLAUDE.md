@@ -19,6 +19,27 @@ rustup target add x86_64-unknown-linux-musl
 cargo build --release --target x86_64-unknown-linux-musl
 ```
 
+## Mandatory Verification After Every Implementation
+
+**CRITICAL: After EVERY code change, run all three checks in order:**
+
+```bash
+cargo fmt                     # Format code (no arguments = auto-fix)
+cargo clippy -- -D warnings   # Lint with strictest settings (warnings = errors)
+cargo test                    # Run full test suite
+```
+
+**Requirements:**
+- All three must pass before committing
+- Zero tolerance for warnings - every clippy warning must be addressed
+- Every test must pass - no skipping or ignoring failures
+- Format must be applied - no manual formatting exceptions
+
+**If any check fails:**
+1. Fix the issue immediately
+2. Re-run all three checks
+3. Only commit when all pass
+
 ## Architecture Overview
 
 This is an Active Inference biological simulation where a single-cell agent (Protozoa) navigates a nutrient-rich petri dish using the Free Energy Principle. The agent minimizes prediction error between its sensory input and homeostatic target rather than following hard-coded rules.
