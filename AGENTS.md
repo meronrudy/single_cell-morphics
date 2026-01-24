@@ -194,7 +194,12 @@ The project structure is strictly modularized to ensure files remain under 200 L
         *   `mcts.rs`: Monte Carlo Tree Search with Expected Free Energy evaluation.
 *   `src/ui/`:
     *   `field.rs`: Parallelized field calculation (`rayon`).
-    *   `render.rs`: `ratatui` draw logic with coordinate transformation.
+    *   `render.rs`: `ratatui` draw logic with sidebar layout:
+        *   `compute_sidebar_layout()`: 70%/30% horizontal split
+        *   `draw_dashboard()`: Orchestrates panel rendering
+        *   Left panel (70%): Petri Dish visualization (full height)
+        *   Right sidebar (30%): Agent metrics, MCTS planning, Landmarks, Spatial Memory
+        *   `compress_spatial_grid()`: Dynamic grid compression for narrow panels
 
 ### Checklist
 
@@ -248,7 +253,7 @@ The project structure is strictly modularized to ensure files remain under 200 L
 #### Step 6: Quality Assurance
 - [x] **Linting:** `cargo clippy` (strict).
 - [x] **Formatting:** `cargo fmt`.
-- [x] **Tests:** `cargo test` passes (94 tests across 8 test files).
+- [x] **Tests:** `cargo test` passes (116 tests across 8 test files).
 
 ---
 

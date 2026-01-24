@@ -63,7 +63,32 @@ This is a **zero-player game**, meaning you watch life unfold.
     *   `planning/`: MCTS planner with Expected Free Energy evaluation.
 *   `src/ui/`: Rendering module.
     *   `field.rs`: Parallelized grid computation (`rayon`).
-    *   `render.rs`: TUI rendering and coordinate transformation.
+    *   `render.rs`: TUI rendering with sidebar dashboard layout.
+
+### Dashboard Layout
+The TUI displays a cognitive dashboard with sidebar layout:
+
+```
+┌──────────────────────────────┬─────────────┐
+│                              │  Agent      │
+│                              │  (metrics)  │
+│        Petri Dish            ├─────────────┤
+│        (~70% width)          │  MCTS       │
+│                              │  (planning) │
+│        ASCII visualization   ├─────────────┤
+│        of environment        │  Landmarks  │
+│                              │  (episodic) │
+│                              ├─────────────┤
+│                              │  Spatial    │
+│                              │  (priors)   │
+└──────────────────────────────┴─────────────┘
+```
+
+*   **Petri Dish (left):** ASCII visualization of nutrient concentrations and agent position
+*   **Agent panel:** Energy bar, mode, prediction error, precision, sensors, temporal gradient
+*   **MCTS panel:** Best action, Expected Free Energy breakdown (pragmatic/epistemic)
+*   **Landmarks panel:** Remembered food locations with reliability and visit counts
+*   **Spatial Memory:** Heatmap of learned nutrient expectations (auto-compresses for narrow terminals)
 
 ### Configuration
 All simulation parameters are defined in `src/simulation/params.rs`:
@@ -84,7 +109,7 @@ All simulation parameters are defined in `src/simulation/params.rs`:
 
 ### Running Tests
 ```bash
-cargo test  # Runs 94 tests across 8 test files
+cargo test  # Runs 116 tests across 8 test files
 ```
 
 ### Code Quality

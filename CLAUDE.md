@@ -8,7 +8,7 @@ All commands run from `protozoa_rust/` directory:
 
 ```bash
 cargo run --release      # Run simulation (use --release for optimal frame rates)
-cargo test               # Run all tests (94 tests across 8 test files)
+cargo test               # Run all tests (116 tests across 8 test files)
 cargo fmt                # Format code
 cargo clippy -- -D warnings  # Lint (strict, warnings as errors)
 ```
@@ -48,7 +48,15 @@ This is an Active Inference biological simulation where a single-cell agent (Pro
 
 **`ui/`** - Rendering
 - `field.rs`: Parallel grid computation using `rayon`. Maps concentration values to ASCII density characters
-- `render.rs`: `ratatui` draw logic with `world_to_grid_coords()` for coordinate transformation
+- `render.rs`: `ratatui` draw logic with sidebar layout. Key functions:
+  - `compute_sidebar_layout()`: 70%/30% horizontal split (main + sidebar)
+  - `draw_dashboard()`: Orchestrates all panels
+  - `draw_petri_dish_panel()`: ASCII environment visualization (left, full height)
+  - `draw_metrics_panel()`: Agent stats - energy, mode, sensors (sidebar top)
+  - `draw_mcts_panel()`: Planning info - best action, EFE breakdown (sidebar)
+  - `draw_landmarks_panel()`: Episodic memory table (sidebar)
+  - `draw_spatial_grid_panel()`: Spatial priors heatmap with compression (sidebar bottom)
+  - `compress_spatial_grid()`: Dynamic grid compression for narrow panels
 
 **`main.rs`** - Event loop: terminal setup (crossterm), tick-based update cycle (sense -> update_state -> render), input handling ('q' to quit). Uses saturating arithmetic for overflow safety.
 
@@ -82,14 +90,14 @@ Boundary sensing returns -1.0 (toxic void) to create repulsion.
 
 ### Test Coverage
 
-94 tests across 8 files covering:
+116 tests across 8 files covering:
 - Agent: initialization, sensing, movement, energy, exhaustion, boundary clamping, angle normalization, temporal gradient, speed-error correlation
 - Environment: initialization, concentration bounds, boundaries, Gaussian properties, source decay/respawn, Brownian motion bounds
 - Memory: ring buffer operations, spatial grid updates, Welford's variance, precision calculation
 - Episodic: landmark creation, decay, refresh, storage replacement, goal navigation
 - Planning: MCTS rollouts, Expected Free Energy, action selection, trajectory validity
 - Integration: cognitive stack integration, performance benchmarks, numerical stability
-- Rendering: grid computation, coordinate transformation
+- Rendering: grid computation, coordinate transformation, sidebar layout, panel rendering, grid compression
 
 ### Code Style
 
