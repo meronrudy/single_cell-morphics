@@ -3,6 +3,8 @@ use protozoa_rust::simulation::environment::PetriDish;
 use protozoa_rust::simulation::params::{DISH_HEIGHT, DISH_WIDTH};
 use protozoa_rust::ui::DashboardState;
 use protozoa_rust::ui::field::compute_field_grid;
+use protozoa_rust::ui::render::compute_quadrant_layout;
+use ratatui::layout::Rect;
 
 #[test]
 fn test_dashboard_state_from_agent() {
@@ -33,4 +35,23 @@ fn test_field_grid_computation() {
             assert!(" .:-=+*#%@".contains(c));
         }
     }
+}
+
+#[test]
+fn test_quadrant_layout_dimensions() {
+    let area = Rect::new(0, 0, 120, 40);
+    let quadrants = compute_quadrant_layout(area);
+
+    // Should have 4 quadrants
+    assert_eq!(quadrants.len(), 4);
+
+    // Each quadrant should be roughly half the area
+    for q in &quadrants {
+        assert!(q.width >= 50);
+        assert!(q.height >= 15);
+    }
+
+    // Top-left should start at origin
+    assert_eq!(quadrants[0].x, 0);
+    assert_eq!(quadrants[0].y, 0);
 }

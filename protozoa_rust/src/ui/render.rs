@@ -1,10 +1,34 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
+
+/// Computes the four quadrant areas for the dashboard layout.
+#[must_use]
+#[allow(dead_code)] // Used by tests and will be used by dashboard renderer
+pub fn compute_quadrant_layout(area: Rect) -> Vec<Rect> {
+    // Split vertically into top and bottom
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Split each row horizontally
+    let top = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(vertical[0]);
+
+    let bottom = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(vertical[1]);
+
+    vec![top[0], top[1], bottom[0], bottom[1]]
+}
 
 pub fn draw_ui(f: &mut Frame, grid_lines: Vec<String>, hud_info: &str) {
     let chunks = Layout::default()
