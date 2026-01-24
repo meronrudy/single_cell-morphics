@@ -59,7 +59,7 @@ impl DashboardState {
         let mean_sense = f64::midpoint(agent.val_l, agent.val_r);
         let prediction_error = mean_sense - TARGET_CONCENTRATION;
         let precision = agent.spatial_priors.get_cell(agent.x, agent.y).precision();
-        let temporal_gradient = mean_sense - agent.last_mean_sense;
+        let temporal_gradient = agent.temp_gradient;
 
         // Flatten spatial grid
         let (gw, gh) = agent.spatial_priors.dimensions();

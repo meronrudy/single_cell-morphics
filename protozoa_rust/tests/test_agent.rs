@@ -167,17 +167,40 @@ fn test_temporal_gradient_tracking() {
     let mut agent = Protozoa::new(50.0, 50.0);
     let dish = PetriDish::new(DISH_WIDTH, DISH_HEIGHT);
 
+    // First tick: establish baseline
     agent.val_l = 0.6;
     agent.val_r = 0.4;
     agent.update_state(&dish);
 
     // last_mean_sense should be updated to midpoint of val_l and val_r
-    let expected = (0.6 + 0.4) / 2.0; // 0.5
+    let first_mean = (0.6 + 0.4) / 2.0; // 0.5
     assert!(
-        (agent.last_mean_sense - expected).abs() < EPSILON,
+        (agent.last_mean_sense - first_mean).abs() < EPSILON,
         "last_mean_sense {} should be {}",
         agent.last_mean_sense,
-        expected
+        first_mean
+    );
+
+    // First tick: temp_gradient should be 0.5 - 0.0 = 0.5 (since initial last_mean_sense was 0)
+    assert!(
+        (agent.temp_gradient - first_mean).abs() < EPSILON,
+        "temp_gradient {} should be {} on first tick",
+        agent.temp_gradient,
+        first_mean
+    );
+
+    // Second tick: create a temporal gradient
+    agent.val_l = 0.8;
+    agent.val_r = 0.6;
+    agent.update_state(&dish);
+
+    let second_mean = (0.8 + 0.6) / 2.0; // 0.7
+    let expected_gradient = second_mean - first_mean; // 0.7 - 0.5 = 0.2
+    assert!(
+        (agent.temp_gradient - expected_gradient).abs() < EPSILON,
+        "temp_gradient {} should be {}",
+        agent.temp_gradient,
+        expected_gradient
     );
 }
 

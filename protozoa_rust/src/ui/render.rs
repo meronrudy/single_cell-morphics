@@ -102,8 +102,7 @@ fn draw_petri_dish_panel(
                 ))
             })
             .collect();
-        let overlay = Paragraph::new(overlay_text)
-            .block(Block::default().borders(Borders::ALL));
+        let overlay = Paragraph::new(overlay_text).block(Block::default().borders(Borders::ALL));
         f.render_widget(overlay, overlay_area);
     }
 }
@@ -261,8 +260,8 @@ pub fn render_spatial_grid_lines(
 #[allow(clippy::cast_possible_truncation)]
 fn action_to_arrow(action: Action, base_angle: f64) -> &'static str {
     let angle = base_angle + action.angle_delta();
-    let octant = ((angle + std::f64::consts::PI / 8.0) / (std::f64::consts::PI / 4.0)).floor()
-        as i32;
+    let octant =
+        ((angle + std::f64::consts::PI / 8.0) / (std::f64::consts::PI / 4.0)).floor() as i32;
     match octant.rem_euclid(8) {
         0 | 8.. => "→",
         1 => "↗",

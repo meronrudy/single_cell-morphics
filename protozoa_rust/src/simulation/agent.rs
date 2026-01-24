@@ -54,6 +54,7 @@ pub struct Protozoa {
     // === Internal State ===
     pub energy: f64,
     pub last_mean_sense: f64,
+    pub temp_gradient: f64,
     pub val_l: f64,
     pub val_r: f64,
 
@@ -90,6 +91,7 @@ impl Protozoa {
             speed: 0.0,
             energy: 1.0,
             last_mean_sense: 0.0,
+            temp_gradient: 0.0,
             val_l: 0.0,
             val_r: 0.0,
             spatial_priors: SpatialGrid::new(DISH_WIDTH, DISH_HEIGHT),
@@ -149,7 +151,7 @@ impl Protozoa {
         let gradient = assert_finite(self.val_l - self.val_r, "gradient");
 
         // 5. Temporal Gradient
-        let temp_gradient = mean_sense - self.last_mean_sense;
+        self.temp_gradient = mean_sense - self.last_mean_sense;
         self.last_mean_sense = mean_sense;
 
         // 6. Exploration bonus for uncertain regions (inverse precision)
@@ -162,7 +164,7 @@ impl Protozoa {
 
         // Panic Turn
         let mut panic_turn = 0.0;
-        if temp_gradient < PANIC_THRESHOLD {
+        if self.temp_gradient < PANIC_THRESHOLD {
             panic_turn = rng.random_range(-PANIC_TURN_RANGE..PANIC_TURN_RANGE);
         }
 
@@ -280,9 +282,7 @@ impl Protozoa {
         }
 
         // Check if panicking (temporal gradient)
-        let mean_sense = f64::midpoint(self.val_l, self.val_r);
-        let temp_gradient = mean_sense - self.last_mean_sense;
-        if temp_gradient < PANIC_THRESHOLD {
+        if self.temp_gradient < PANIC_THRESHOLD {
             return AgentMode::Panicking;
         }
 
@@ -297,6 +297,7 @@ impl Protozoa {
         }
 
         // Check exploiting (high precision at current location)
+        let mean_sense = f64::midpoint(self.val_l, self.val_r);
         let precision = self.spatial_priors.get_cell(self.x, self.y).precision();
         if precision > 5.0 && mean_sense > 0.6 {
             return AgentMode::Exploiting;

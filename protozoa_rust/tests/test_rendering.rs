@@ -25,6 +25,31 @@ fn test_dashboard_state_from_agent() {
 }
 
 #[test]
+fn test_dashboard_temporal_gradient_not_zero() {
+    let dish = PetriDish::new(DISH_WIDTH, DISH_HEIGHT);
+    let mut agent = Protozoa::new(50.0, 25.0);
+
+    // First tick: establish baseline
+    agent.val_l = 0.3;
+    agent.val_r = 0.3;
+    agent.update_state(&dish);
+
+    // Second tick: create a temporal gradient
+    agent.val_l = 0.7;
+    agent.val_r = 0.7;
+    agent.update_state(&dish);
+
+    let state = DashboardState::from_agent(&agent, &dish);
+
+    // Temporal gradient should be 0.7 - 0.3 = 0.4
+    assert!(
+        (state.temporal_gradient - 0.4).abs() < 0.01,
+        "temporal_gradient {} should be approximately 0.4",
+        state.temporal_gradient
+    );
+}
+
+#[test]
 fn test_field_grid_computation() {
     let dish = PetriDish::new(100.0, 50.0);
     let rows = 10;
@@ -201,9 +226,7 @@ fn test_dashboard_state_uses_visit_count() {
     let mut agent = Protozoa::new(10.0, 10.0);
 
     agent.episodic_memory.maybe_store(10.0, 10.0, 0.9, 10);
-    agent
-        .episodic_memory
-        .update_on_visit(10.0, 10.0, 0.9, 42);
+    agent.episodic_memory.update_on_visit(10.0, 10.0, 0.9, 42);
 
     let state = DashboardState::from_agent(&agent, &dish);
 
