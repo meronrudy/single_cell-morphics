@@ -282,6 +282,54 @@ fn mean_to_char(mean: f64) -> char {
     DENSITY_CHARS[idx.min(8)]
 }
 
+/// Compresses spatial grid horizontally by averaging adjacent cells.
+/// If `target_width` >= `orig_width`, returns a copy unchanged.
+#[must_use]
+#[allow(dead_code)] // Will be used when sidebar layout needs compression
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+fn compress_spatial_grid(
+    cells: &[CellPrior],
+    orig_width: usize,
+    orig_height: usize,
+    target_width: usize,
+) -> Vec<CellPrior> {
+    if target_width >= orig_width {
+        return cells.to_vec();
+    }
+
+    let mut result = Vec::with_capacity(target_width * orig_height);
+    let ratio = orig_width as f64 / target_width as f64;
+
+    for row in 0..orig_height {
+        for target_col in 0..target_width {
+            let start_col = (target_col as f64 * ratio).floor() as usize;
+            let end_col = (((target_col + 1) as f64) * ratio).floor() as usize;
+            let end_col = end_col.min(orig_width);
+
+            let mut sum_mean = 0.0;
+            let mut count = 0;
+
+            for col in start_col..end_col {
+                let idx = row * orig_width + col;
+                if let Some(cell) = cells.get(idx) {
+                    sum_mean += cell.mean;
+                    count += 1;
+                }
+            }
+
+            let mut compressed = CellPrior::default();
+            if count > 0 {
+                compressed.mean = sum_mean / f64::from(count);
+            }
+            result.push(compressed);
+        }
+    }
+
+    result
+}
+
 /// Renders spatial grid as ASCII lines.
 /// `agent_cell` is (row, col) of agent's current grid cell, if known.
 #[must_use]
@@ -567,5 +615,56 @@ mod tests {
             cols - 1,
             "Col index should be clamped to max valid index"
         );
+    }
+
+    #[test]
+    fn test_compress_spatial_grid_no_compression_needed() {
+        use crate::simulation::memory::CellPrior;
+
+        // 4x2 grid, target width 4 (no compression)
+        let cells: Vec<CellPrior> = (0..8)
+            .map(|i| {
+                let mut c = CellPrior::default();
+                c.mean = i as f64 * 0.1;
+                c
+            })
+            .collect();
+
+        let result = compress_spatial_grid(&cells, 4, 2, 4);
+        assert_eq!(result.len(), 8);
+        assert!((result[0].mean - 0.0).abs() < 0.001);
+        assert!((result[3].mean - 0.3).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compress_spatial_grid_halves_width() {
+        use crate::simulation::memory::CellPrior;
+
+        // 4x2 grid, compress to width 2
+        // Row 0: [0.0, 0.2, 0.4, 0.6] -> [0.1, 0.5]
+        // Row 1: [0.4, 0.6, 0.8, 1.0] -> [0.5, 0.9]
+        let mut cells = Vec::new();
+        for row in 0..2 {
+            for col in 0..4 {
+                let mut c = CellPrior::default();
+                c.mean = (row * 4 + col) as f64 * 0.2;
+                cells.push(c);
+            }
+        }
+
+        let result = compress_spatial_grid(&cells, 4, 2, 2);
+        assert_eq!(result.len(), 4); // 2x2 grid
+
+        // Check averaged values
+        assert!(
+            (result[0].mean - 0.1).abs() < 0.001,
+            "got {}",
+            result[0].mean
+        ); // avg(0.0, 0.2)
+        assert!(
+            (result[1].mean - 0.5).abs() < 0.001,
+            "got {}",
+            result[1].mean
+        ); // avg(0.4, 0.6)
     }
 }
