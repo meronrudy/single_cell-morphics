@@ -2,10 +2,11 @@ use protozoa_rust::simulation::agent::{AgentMode, Protozoa};
 use protozoa_rust::simulation::environment::PetriDish;
 use protozoa_rust::simulation::memory::CellPrior;
 use protozoa_rust::simulation::params::{DISH_HEIGHT, DISH_WIDTH};
+use protozoa_rust::simulation::planning::{Action, ActionDetail};
 use protozoa_rust::ui::DashboardState;
 use protozoa_rust::ui::field::compute_field_grid;
 use protozoa_rust::ui::render::{
-    compute_quadrant_layout, format_metrics_overlay, render_spatial_grid_lines,
+    compute_quadrant_layout, format_mcts_summary, format_metrics_overlay, render_spatial_grid_lines,
 };
 use ratatui::layout::Rect;
 
@@ -101,4 +102,30 @@ fn test_spatial_grid_ascii_mapping() {
     // First row contains cells 0-3
     assert!(lines[0].contains(' ')); // Low value
     assert!(lines[1].len() >= 4);
+}
+
+#[test]
+fn test_mcts_summary_format() {
+    let details = vec![
+        ActionDetail {
+            action: Action::TurnLeft,
+            total_efe: -1.5,
+            pragmatic_value: -1.2,
+            epistemic_value: -1.0,
+            sample_trajectory: vec![(50.0, 25.0), (52.0, 27.0)],
+        },
+        ActionDetail {
+            action: Action::Straight,
+            total_efe: -2.3,
+            pragmatic_value: -1.8,
+            epistemic_value: -1.67,
+            sample_trajectory: vec![(50.0, 25.0), (55.0, 25.0)],
+        },
+    ];
+
+    let lines = format_mcts_summary(&details, 7);
+
+    // Should have lines for best action, G, Prag, Epis, Rolls, Depth, Replan
+    assert!(lines.len() >= 5);
+    assert!(lines[0].contains("Best"));
 }

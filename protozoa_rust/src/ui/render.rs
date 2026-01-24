@@ -1,5 +1,7 @@
 use crate::simulation::agent::AgentMode;
 use crate::simulation::memory::CellPrior;
+use crate::simulation::params::{MCTS_DEPTH, MCTS_ROLLOUTS};
+use crate::simulation::planning::{Action, ActionDetail};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -116,6 +118,64 @@ pub fn render_spatial_grid_lines(
     }
 
     lines
+}
+
+/// Direction arrow for an action based on base angle.
+#[allow(dead_code)] // Used by format_mcts_summary
+#[allow(clippy::cast_possible_truncation)]
+fn action_to_arrow(action: Action, base_angle: f64) -> &'static str {
+    let angle = base_angle + action.angle_delta();
+    let octant = ((angle + std::f64::consts::PI / 8.0) / (std::f64::consts::PI / 4.0)) as i32 % 8;
+    match octant.rem_euclid(8) {
+        0 | 8.. => "→",
+        1 => "↗",
+        2 => "↑",
+        3 => "↖",
+        4 => "←",
+        5 => "↙",
+        6 => "↓",
+        7 => "↘",
+        // rem_euclid(8) guarantees 0-7, but match must be exhaustive
+        _ => unreachable!(),
+    }
+}
+
+/// Direction name for an action.
+#[allow(dead_code)] // Used by format_mcts_summary
+fn action_to_name(action: Action) -> &'static str {
+    match action {
+        Action::TurnLeft => "L",
+        Action::Straight => "S",
+        Action::TurnRight => "R",
+    }
+}
+
+/// Formats MCTS planning summary text.
+#[must_use]
+#[allow(dead_code)] // Used by tests and will be used by dashboard renderer
+pub fn format_mcts_summary(details: &[ActionDetail], ticks_until_replan: u64) -> Vec<String> {
+    // Find best action (highest EFE)
+    let best = details
+        .iter()
+        .max_by(|a, b| a.total_efe.total_cmp(&b.total_efe));
+
+    if let Some(best) = best {
+        vec![
+            format!(
+                "Best: {} ({})",
+                action_to_arrow(best.action, 0.0),
+                action_to_name(best.action)
+            ),
+            format!("G: {:.2}", best.total_efe),
+            format!("├─Prag: {:.2}", best.pragmatic_value),
+            format!("└─Epis: {:.2}", best.epistemic_value),
+            format!("Rolls: {}", MCTS_ROLLOUTS),
+            format!("Depth: {}", MCTS_DEPTH),
+            format!("Replan: {}", ticks_until_replan),
+        ]
+    } else {
+        vec!["No plan data".to_string()]
+    }
 }
 
 pub fn draw_ui(f: &mut Frame, grid_lines: Vec<String>, hud_info: &str) {
