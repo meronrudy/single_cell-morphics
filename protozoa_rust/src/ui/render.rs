@@ -103,8 +103,7 @@ fn draw_petri_dish_panel(
             })
             .collect();
         let overlay = Paragraph::new(overlay_text)
-            .block(Block::default().borders(Borders::ALL))
-            .style(Style::default().bg(Color::Black));
+            .block(Block::default().borders(Borders::ALL));
         f.render_widget(overlay, overlay_area);
     }
 }
