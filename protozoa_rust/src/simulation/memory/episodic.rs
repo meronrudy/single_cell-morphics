@@ -16,6 +16,8 @@ pub struct Landmark {
     pub peak_nutrient: f64,
     /// Tick when this landmark was last visited
     pub last_visit_tick: u64,
+    /// Number of visits to this landmark
+    pub visit_count: u64,
     /// Reliability score (decays over time when not visited)
     pub reliability: f64,
 }
@@ -29,6 +31,7 @@ impl Landmark {
             y,
             peak_nutrient: nutrient,
             last_visit_tick: tick,
+            visit_count: 1,
             reliability: 1.0,
         }
     }
@@ -56,6 +59,7 @@ impl Landmark {
     pub fn refresh(&mut self, nutrient: f64, tick: u64) {
         self.peak_nutrient = self.peak_nutrient.max(nutrient);
         self.last_visit_tick = tick;
+        self.visit_count = self.visit_count.saturating_add(1);
         self.reliability = 1.0;
     }
 }

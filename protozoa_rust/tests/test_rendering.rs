@@ -133,6 +133,30 @@ fn test_mcts_summary_format() {
 }
 
 #[test]
+fn test_mcts_summary_turn_right_arrow() {
+    let details = vec![
+        ActionDetail {
+            action: Action::TurnRight,
+            total_efe: 1.0,
+            pragmatic_value: 0.5,
+            epistemic_value: 0.5,
+            sample_trajectory: vec![(50.0, 25.0)],
+        },
+        ActionDetail {
+            action: Action::TurnLeft,
+            total_efe: 0.2,
+            pragmatic_value: 0.1,
+            epistemic_value: 0.1,
+            sample_trajectory: vec![(50.0, 25.0)],
+        },
+    ];
+
+    let lines = format_mcts_summary(&details, 4);
+
+    assert!(lines[0].contains("↘"));
+}
+
+#[test]
 fn test_landmarks_list_format() {
     let landmarks = vec![
         LandmarkSnapshot {
@@ -155,4 +179,34 @@ fn test_landmarks_list_format() {
     assert!(lines.len() >= 3);
     // First landmark should have nav arrow
     assert!(lines[2].starts_with('→'));
+}
+
+#[test]
+fn test_landmarks_list_reliability_full() {
+    let landmarks = vec![LandmarkSnapshot {
+        x: 12.0,
+        y: 8.0,
+        reliability: 1.0,
+        visit_count: 1,
+    }];
+
+    let lines = format_landmarks_list(&landmarks, None);
+
+    assert!(lines[2].contains("1.00"));
+}
+
+#[test]
+fn test_dashboard_state_uses_visit_count() {
+    let dish = PetriDish::new(DISH_WIDTH, DISH_HEIGHT);
+    let mut agent = Protozoa::new(10.0, 10.0);
+
+    agent.episodic_memory.maybe_store(10.0, 10.0, 0.9, 10);
+    agent
+        .episodic_memory
+        .update_on_visit(10.0, 10.0, 0.9, 42);
+
+    let state = DashboardState::from_agent(&agent, &dish);
+
+    assert_eq!(state.landmarks.len(), 1);
+    assert_eq!(state.landmarks[0].visit_count, 2);
 }

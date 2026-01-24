@@ -82,7 +82,7 @@ impl DashboardState {
                 x: lm.x,
                 y: lm.y,
                 reliability: lm.reliability,
-                visit_count: lm.last_visit_tick,
+                visit_count: lm.visit_count,
             })
             .collect();
 

@@ -261,7 +261,8 @@ pub fn render_spatial_grid_lines(
 #[allow(clippy::cast_possible_truncation)]
 fn action_to_arrow(action: Action, base_angle: f64) -> &'static str {
     let angle = base_angle + action.angle_delta();
-    let octant = ((angle + std::f64::consts::PI / 8.0) / (std::f64::consts::PI / 4.0)) as i32 % 8;
+    let octant = ((angle + std::f64::consts::PI / 8.0) / (std::f64::consts::PI / 4.0)).floor()
+        as i32;
     match octant.rem_euclid(8) {
         0 | 8.. => "→",
         1 => "↗",
@@ -329,13 +330,14 @@ pub fn format_landmarks_list(
 
     for (i, lm) in landmarks.iter().enumerate() {
         let prefix = if nav_target == Some(i) { "→" } else { " " };
+        let reliability = format!("{:>4.2}", lm.reliability.clamp(0.0, 1.0));
         lines.push(format!(
-            "{}{} │({:>3},{:>3})│.{:02}│ {}",
+            "{}{} │({:>3},{:>3})│{}│ {}",
             prefix,
             i + 1,
             lm.x as i32,
             lm.y as i32,
-            (lm.reliability * 100.0) as i32 % 100,
+            reliability,
             lm.visit_count
         ));
     }
