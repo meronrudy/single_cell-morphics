@@ -1,3 +1,4 @@
+use crate::simulation::agent::AgentMode;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -28,6 +29,47 @@ pub fn compute_quadrant_layout(area: Rect) -> Vec<Rect> {
         .split(vertical[1]);
 
     vec![top[0], top[1], bottom[0], bottom[1]]
+}
+
+/// Formats the metrics overlay lines for the petri dish panel.
+#[must_use]
+#[allow(dead_code)] // Used by tests and will be used by dashboard renderer
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+pub fn format_metrics_overlay(
+    energy: f64,
+    mode: AgentMode,
+    prediction_error: f64,
+    precision: f64,
+    speed: f64,
+    angle_deg: f64,
+    sensor_left: f64,
+    sensor_right: f64,
+    temporal_gradient: f64,
+) -> Vec<String> {
+    // Energy bar (10 chars)
+    let filled = (energy * 10.0).round() as usize;
+    let empty = 10 - filled.min(10);
+    let bar: String = "\u{2588}".repeat(filled.min(10)) + &"\u{2591}".repeat(empty);
+    let pct = (energy * 100.0).round() as i32;
+
+    let mode_str = match mode {
+        AgentMode::Exploring => "EXPLORING",
+        AgentMode::Exploiting => "EXPLOITING",
+        AgentMode::Panicking => "PANICKING",
+        AgentMode::Exhausted => "EXHAUSTED",
+        AgentMode::GoalNav => "GOAL-NAV",
+    };
+
+    vec![
+        format!("E:[{bar}] {pct:>3}%"),
+        format!("Mode: {mode_str}"),
+        format!("PE:{prediction_error:>6.2}  \u{03C1}:{precision:.2}"),
+        format!("v:{speed:>4.1}  \u{03B8}:{angle_deg:>4.0}\u{00B0}"),
+        format!("L:{sensor_left:.2}  R:{sensor_right:.2}"),
+        format!("\u{2202}t:{temporal_gradient:>6.2}"),
+    ]
 }
 
 pub fn draw_ui(f: &mut Frame, grid_lines: Vec<String>, hud_info: &str) {

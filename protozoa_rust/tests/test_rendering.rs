@@ -3,7 +3,7 @@ use protozoa_rust::simulation::environment::PetriDish;
 use protozoa_rust::simulation::params::{DISH_HEIGHT, DISH_WIDTH};
 use protozoa_rust::ui::DashboardState;
 use protozoa_rust::ui::field::compute_field_grid;
-use protozoa_rust::ui::render::compute_quadrant_layout;
+use protozoa_rust::ui::render::{compute_quadrant_layout, format_metrics_overlay};
 use ratatui::layout::Rect;
 
 #[test]
@@ -54,4 +54,29 @@ fn test_quadrant_layout_dimensions() {
     // Top-left should start at origin
     assert_eq!(quadrants[0].x, 0);
     assert_eq!(quadrants[0].y, 0);
+}
+
+#[test]
+fn test_metrics_overlay_content() {
+    let lines = format_metrics_overlay(
+        0.82, // energy
+        AgentMode::Exploring,
+        -0.12, // prediction_error
+        0.85,  // precision
+        1.3,   // speed
+        127.0, // angle in degrees
+        0.74,  // sensor_left
+        0.68,  // sensor_right
+        -0.02, // temporal_gradient
+    );
+
+    // Should have 6 lines
+    assert_eq!(lines.len(), 6);
+
+    // First line should contain energy bar
+    assert!(lines[0].contains("E:"));
+    assert!(lines[0].contains("82%"));
+
+    // Second line should contain mode
+    assert!(lines[1].contains("EXPLORING"));
 }
