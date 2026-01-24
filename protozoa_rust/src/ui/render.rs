@@ -134,6 +134,38 @@ fn draw_petri_dish_panel(
     }
 }
 
+#[allow(dead_code)] // Will be used when dashboard switches to sidebar layout
+fn draw_metrics_panel(f: &mut Frame, area: Rect, state: &DashboardState) {
+    let block = Block::default().title(" Agent ").borders(Borders::ALL);
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    let angle_deg = state.angle.to_degrees();
+    let lines = format_metrics_overlay(
+        state.energy,
+        state.mode,
+        state.prediction_error,
+        state.precision,
+        state.speed,
+        angle_deg,
+        state.sensor_left,
+        state.sensor_right,
+        state.temporal_gradient,
+    );
+
+    let text: Vec<Line> = lines
+        .into_iter()
+        .map(|s| {
+            Line::from(Span::styled(
+                s,
+                Style::default().add_modifier(Modifier::BOLD),
+            ))
+        })
+        .collect();
+    let paragraph = Paragraph::new(text);
+    f.render_widget(paragraph, inner);
+}
+
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_sign_loss)]
 #[allow(clippy::cast_precision_loss)]
@@ -436,6 +468,49 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_draw_metrics_panel_renders_without_panic() {
+        use crate::simulation::agent::AgentMode;
+        use crate::simulation::memory::CellPrior;
+        use crate::ui::DashboardState;
+        use ratatui::Terminal;
+        use ratatui::backend::TestBackend;
+
+        let backend = TestBackend::new(30, 10);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        let state = DashboardState {
+            x: 50.0,
+            y: 25.0,
+            angle: 1.0,
+            speed: 0.5,
+            energy: 0.8,
+            mode: AgentMode::Exploring,
+            prediction_error: -0.2,
+            precision: 5.0,
+            sensor_left: 0.6,
+            sensor_right: 0.5,
+            temporal_gradient: 0.03,
+            spatial_grid: vec![CellPrior::default(); 200],
+            grid_width: 20,
+            grid_height: 10,
+            plan_details: vec![],
+            ticks_until_replan: 15,
+            landmarks: vec![],
+            landmark_count: 0,
+            nav_target_index: None,
+        };
+
+        terminal
+            .draw(|f| {
+                let area = Rect::new(0, 0, 25, 8);
+                draw_metrics_panel(f, area, &state);
+            })
+            .unwrap();
+
+        // If we get here without panic, the test passes
+    }
+
+    #[test]
     fn test_compute_sidebar_layout() {
         use ratatui::layout::Rect;
 
@@ -443,13 +518,21 @@ mod tests {
         let (main, sidebar) = compute_sidebar_layout(area);
 
         // Main panel should be ~70% width
-        assert!(main.width >= 68 && main.width <= 72, "main width: {}", main.width);
+        assert!(
+            main.width >= 68 && main.width <= 72,
+            "main width: {}",
+            main.width
+        );
         assert_eq!(main.height, 40);
         assert_eq!(main.x, 0);
 
         // Sidebar should be ~30% width
         assert!(sidebar.len() == 4, "should have 4 sidebar panels");
-        assert!(sidebar[0].width >= 28 && sidebar[0].width <= 32, "sidebar width: {}", sidebar[0].width);
+        assert!(
+            sidebar[0].width >= 28 && sidebar[0].width <= 32,
+            "sidebar width: {}",
+            sidebar[0].width
+        );
 
         // Sidebar panels should stack vertically
         assert_eq!(sidebar[0].y, 0); // Metrics at top
