@@ -39,6 +39,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // Check terminal size
+    let size = terminal.size()?;
+    if size.width < 80 || size.height < 24 {
+        eprintln!(
+            "Warning: Terminal size {}x{} is smaller than recommended 80x24. Dashboard may not display correctly.",
+            size.width, size.height
+        );
+    }
+
     // App State
     let mut dish = PetriDish::new(DISH_WIDTH, DISH_HEIGHT);
     let mut agent = Protozoa::new(DISH_WIDTH / 2.0, DISH_HEIGHT / 2.0);
