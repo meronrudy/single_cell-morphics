@@ -11,6 +11,33 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
+/// Computes the main + sidebar layout for the dashboard.
+/// Returns (`main_area`, `sidebar_panels`) where `sidebar_panels` is [Metrics, MCTS, Landmarks, Spatial].
+#[must_use]
+#[allow(dead_code)] // Will be used when dashboard switches to sidebar layout
+pub fn compute_sidebar_layout(area: Rect) -> (Rect, Vec<Rect>) {
+    // Horizontal split: 70% main, 30% sidebar
+    let horizontal = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .split(area);
+
+    let main = horizontal[0];
+
+    // Sidebar vertical split: fixed heights for top 3, remaining for Spatial
+    let sidebar_panels = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(8),  // Metrics
+            Constraint::Length(9),  // MCTS
+            Constraint::Length(12), // Landmarks
+            Constraint::Min(0),     // Spatial (remaining)
+        ])
+        .split(horizontal[1]);
+
+    (main, sidebar_panels.to_vec())
+}
+
 /// Computes the four quadrant areas for the dashboard layout.
 #[must_use]
 pub fn compute_quadrant_layout(area: Rect) -> Vec<Rect> {
@@ -407,6 +434,29 @@ pub fn world_to_grid_coords(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_compute_sidebar_layout() {
+        use ratatui::layout::Rect;
+
+        let area = Rect::new(0, 0, 100, 40);
+        let (main, sidebar) = compute_sidebar_layout(area);
+
+        // Main panel should be ~70% width
+        assert!(main.width >= 68 && main.width <= 72, "main width: {}", main.width);
+        assert_eq!(main.height, 40);
+        assert_eq!(main.x, 0);
+
+        // Sidebar should be ~30% width
+        assert!(sidebar.len() == 4, "should have 4 sidebar panels");
+        assert!(sidebar[0].width >= 28 && sidebar[0].width <= 32, "sidebar width: {}", sidebar[0].width);
+
+        // Sidebar panels should stack vertically
+        assert_eq!(sidebar[0].y, 0); // Metrics at top
+        assert!(sidebar[1].y > sidebar[0].y); // MCTS below Metrics
+        assert!(sidebar[2].y > sidebar[1].y); // Landmarks below MCTS
+        assert!(sidebar[3].y > sidebar[2].y); // Spatial below Landmarks
+    }
 
     #[test]
     fn test_boundary_coordinates() {
