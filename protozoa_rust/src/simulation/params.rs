@@ -117,3 +117,7 @@ pub const MAX_SENSORY_PRECISION: f64 = 20.0;
 pub const UNCERTAINTY_GROWTH: f64 = 1.1;
 /// Uncertainty reduction factor after observation
 pub const UNCERTAINTY_REDUCTION: f64 = 0.95;
+
+// === Morphogenesis Parameters ===
+pub const SURPRISE_THRESHOLD: f64 = 2.0;
+pub const FRUSTRATION_THRESHOLD: f64 = 5.0;
