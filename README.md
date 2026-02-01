@@ -9,7 +9,8 @@ Protozoa is a zero-player biological simulation where a single-cell agent naviga
 
 ## ✨ Features
 *   **Genuine Active Inference:** Gaussian beliefs q(s) = N(μ, Σ), Variational Free Energy minimization, Expected Free Energy for action selection.
-*   **Stereo Vision:** Two chemical sensors detect continuous gradients.
+*   **Morphological Adaptation (System 2):** Dynamic sensor geometry, learning rates, and homeostatic targets that adapt based on accumulated surprise and frustration.
+*   **Stereo Vision:** Two chemical sensors detect continuous gradients with dynamic positioning and angle.
 *   **Multi-Layer Memory:**
     *   **Short-term:** Ring buffer of 32 recent experiences
     *   **Long-term:** 20×10 spatial grid learning nutrient expectations (Welford's algorithm)
@@ -20,7 +21,7 @@ Protozoa is a zero-player biological simulation where a single-cell agent naviga
 *   **Static Binary:** Ship a single executable with no external dependencies.
 *   **Dynamic Environment:** Food sources decay, move (Brownian motion), and regrow.
 *   **Metabolic System:** Managing energy (ATP) is crucial; exhaustion leads to death spirals.
-*   **Emergent Behavior:** Watch the agent panic, tumble, sprint, and graze without explicit instructions.
+*   **Emergent Behavior:** Watch the agent panic, tumble, sprint, graze, and adapt its morphology without explicit instructions.
 
 ## 🚀 Getting Started
 

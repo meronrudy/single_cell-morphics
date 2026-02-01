@@ -8,7 +8,7 @@ All commands run from `protozoa_rust/` directory:
 
 ```bash
 cargo run --release      # Run simulation (use --release for optimal frame rates)
-cargo test               # Run all tests (136 tests across 9 test files)
+cargo test               # Run all tests (161 tests across 10 test files)
 cargo fmt                # Format code
 cargo clippy -- -D warnings  # Lint (strict, warnings as errors)
 ```
@@ -73,6 +73,8 @@ This is a genuine Active Inference biological simulation where a single-cell age
   - **Episodic**: `MAX_LANDMARKS` (8), `LANDMARK_THRESHOLD`, `LANDMARK_DECAY`, `LANDMARK_ATTRACTION_SCALE`, `LANDMARK_VISIT_RADIUS`
   - **Planning**: `MCTS_ROLLOUTS` (50), `MCTS_DEPTH` (10), `MCTS_REPLAN_INTERVAL` (20), `MCTS_URGENT_ENERGY`, `PLANNING_WEIGHT`
   - **Active Inference**: `BELIEF_LEARNING_RATE` (0.15), `MAX_VFE` (5.0), `INITIAL_SENSORY_PRECISION` (5.0), `NUTRIENT_PRIOR_PRECISION` (2.0), `MIN/MAX_SENSORY_PRECISION`, `UNCERTAINTY_GROWTH/REDUCTION`
+  - **Morphological Adaptation**: `MORPH_SURPRISE_THRESHOLD` (20.0), `MORPH_FRUSTRATION_THRESHOLD` (15.0), `MORPH_WINDOW_SIZE` (100), `MORPH_ACCUMULATOR_DECAY` (0.98)
+- `morphology.rs`: Dynamic morphological parameters that adapt via System 2 regulation. Contains `Morphology` struct with sensor_dist, sensor_angle, belief_learning_rate, and target_concentration. Methods for structural morphogenesis (adjust sensors based on surprise) and allostatic regulation (adjust homeostatic targets based on frustration).
 
 **`simulation/inference/`** - Active Inference engine
 - `beliefs.rs`: Gaussian belief state q(s) = N(μ, Σ) with `BeliefState`, `BeliefMean`, `BeliefCovariance`. Methods for gradient descent updates and uncertainty management.
@@ -91,10 +93,11 @@ This is a genuine Active Inference biological simulation where a single-cell age
 **`ui/`** - Rendering
 - `field.rs`: Parallel grid computation using `rayon`. Maps concentration values to ASCII density characters
 - `render.rs`: `ratatui` draw logic with sidebar layout. Key functions:
-  - `compute_sidebar_layout()`: 70%/30% horizontal split (main + sidebar)
+  - `compute_sidebar_layout()`: 70%/30% horizontal split (main + sidebar with 5 panels)
   - `draw_dashboard()`: Orchestrates all panels
   - `draw_petri_dish_panel()`: ASCII environment visualization (left, full height)
   - `draw_metrics_panel()`: Agent stats - energy, mode, sensors (sidebar top)
+  - `draw_morphology_panel()`: System 2 morphology parameters with color-coded accumulator levels (sidebar)
   - `draw_mcts_panel()`: Planning info - best action, EFE breakdown (sidebar)
   - `draw_landmarks_panel()`: Episodic memory table (sidebar)
   - `draw_spatial_grid_panel()`: Spatial priors heatmap with compression (sidebar bottom)
@@ -124,14 +127,26 @@ Ambiguity = uncertainty in predicted observations
 Epistemic = information gain (uncertainty reduction)
 ```
 
-The agent uses stereo chemical sensors (left/right at configurable angle offset). Each tick:
-1. **Infer**: Compute VFE gradient and update Gaussian beliefs via gradient descent
+The agent uses stereo chemical sensors (left/right at dynamic angle offset from morphology). Each tick:
+1. **Infer**: Compute VFE gradient and update Gaussian beliefs via gradient descent (using dynamic learning rate)
 2. **Learn**: Update sensory precision from prediction errors (EMA)
 3. **Plan**: Evaluate actions by Expected Free Energy, select minimum
 4. **Act**: Blend reactive gradient + planned action + exploration + panic + goal attraction
 5. **Update**: Spatial priors (Welford), episodic memory (landmarks), position
-6. Speed = MAX_SPEED × (VFE / MAX_VFE), clamped to [0, 1]
-7. Angle normalized using `rem_euclid(2π)` for numerical stability
+6. **Regulate**: Accumulate surprise (VFE) and frustration (EFE), trigger morphogenesis/allostasis when thresholds exceeded
+7. Speed = MAX_SPEED × (VFE / MAX_VFE), clamped to [0, 1]
+8. Angle normalized using `rem_euclid(2π)` for numerical stability
+
+**Morphological Adaptation (System 2):**
+- **Surprise Accumulation**: Every tick adds current VFE
+- **Frustration Accumulation**: Every tick adds positive EFE (actual frustration, not epistemic opportunity)
+- **Structural Morphogenesis**: When avg_surprise > threshold over 100-tick window:
+  - Widens sensor distance/angle for better gradient detection
+  - Increases learning rate for faster adaptation
+- **Allostatic Regulation**: When avg_frustration > threshold:
+  - Lowers homeostatic target (allostatic load)
+  - Updates generative model with new target
+- **Recovery**: Accumulators decay when below threshold, target slowly restores toward ideal
 
 Boundary sensing returns -1.0 (toxic void) to create repulsion.
 
@@ -144,10 +159,16 @@ Boundary sensing returns -1.0 (toxic void) to create repulsion.
 
 ### Test Coverage
 
-136 tests across 9 files covering:
+161 tests across 10 files covering:
 - Agent: initialization, sensing, movement, energy, exhaustion, boundary clamping, angle normalization, temporal gradient, speed-error correlation
+- Morphology: structure initialization, sensor/angle/learning_rate/target adjustments, clamping, integration with agent, System 1/System 2 loop
 - Inference: belief state operations, VFE computation, VFE gradient descent, EFE evaluation, prediction errors, precision estimation
 - Environment: initialization, concentration bounds, boundaries, Gaussian properties, source decay/respawn, Brownian motion bounds
+- Memory: ring buffer operations, spatial grid updates, Welford's variance, precision calculation
+- Episodic: landmark creation, decay, refresh, storage replacement, goal navigation
+- Planning: MCTS rollouts, Expected Free Energy, action selection, trajectory validity
+- Integration: cognitive stack integration, performance benchmarks, numerical stability, morphological regulation
+- Rendering: grid computation, coordinate transformation, sidebar layout (5 panels), panel rendering, grid compression
 - Memory: ring buffer operations, spatial grid updates, Welford's variance, precision calculation
 - Episodic: landmark creation, decay, refresh, storage replacement, goal navigation
 - Planning: MCTS rollouts, Expected Free Energy, action selection, trajectory validity
