@@ -297,8 +297,6 @@ fn test_system_1_system_2_loop() {
     let mut agent = Protozoa::new(50.0, 25.0);
     let mut dish = PetriDish::new(DISH_WIDTH, DISH_HEIGHT);
 
-    let initial_sensor_dist = agent.morphology.sensor_dist;
-
     // Run full simulation for enough ticks to potentially trigger regulation
     for _ in 0..(MORPH_WINDOW_SIZE * 2) {
         dish.update();
