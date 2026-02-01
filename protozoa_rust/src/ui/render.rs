@@ -12,7 +12,7 @@ use ratatui::{
 };
 
 /// Computes the main + sidebar layout for the dashboard.
-/// Returns (`main_area`, `sidebar_panels`) where `sidebar_panels` is [Metrics, MCTS, Landmarks, Spatial].
+/// Returns (`main_area`, `sidebar_panels`) where `sidebar_panels` is [Metrics, Morphology, MCTS, Landmarks, Spatial].
 #[must_use]
 pub fn compute_sidebar_layout(area: Rect) -> (Rect, Vec<Rect>) {
     // Horizontal split: 70% main, 30% sidebar
@@ -23,11 +23,12 @@ pub fn compute_sidebar_layout(area: Rect) -> (Rect, Vec<Rect>) {
 
     let main = horizontal[0];
 
-    // Sidebar vertical split: fixed heights for top 3, remaining for Spatial
+    // Sidebar vertical split: fixed heights for top 4, remaining for Spatial
     let sidebar_panels = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(8),  // Metrics
+            Constraint::Length(9),  // Morphology (System 2)
             Constraint::Length(9),  // MCTS
             Constraint::Length(12), // Landmarks
             Constraint::Min(0),     // Spatial (remaining)
@@ -79,14 +80,17 @@ pub fn draw_dashboard(f: &mut Frame, grid_lines: Vec<String>, state: &DashboardS
     // [0] Metrics (top)
     draw_metrics_panel(f, sidebar[0], state);
 
-    // [1] MCTS Planning
-    draw_mcts_panel(f, sidebar[1], state);
+    // [1] Morphology (System 2)
+    draw_morphology_panel(f, sidebar[1], state);
 
-    // [2] Landmarks
-    draw_landmarks_panel(f, sidebar[2], state);
+    // [2] MCTS Planning
+    draw_mcts_panel(f, sidebar[2], state);
 
-    // [3] Spatial Memory (bottom, takes remaining space)
-    draw_spatial_grid_panel(f, sidebar[3], state);
+    // [3] Landmarks
+    draw_landmarks_panel(f, sidebar[3], state);
+
+    // [4] Spatial Memory (bottom, takes remaining space)
+    draw_spatial_grid_panel(f, sidebar[4], state);
 }
 
 fn draw_petri_dish_panel(f: &mut Frame, area: Rect, grid_lines: Vec<String>) {
@@ -131,6 +135,58 @@ fn draw_metrics_panel(f: &mut Frame, area: Rect, state: &DashboardState) {
         })
         .collect();
     let paragraph = Paragraph::new(text);
+    f.render_widget(paragraph, inner);
+}
+
+fn draw_morphology_panel(f: &mut Frame, area: Rect, state: &DashboardState) {
+    let block = Block::default()
+        .title(" Morphology (System 2) ")
+        .borders(Borders::ALL);
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    // Format morphology parameters with change indicators
+    let sensor_dist_str = format!("Sensor Dist: {:.2}", state.sensor_dist);
+    let sensor_angle_str = format!("Sensor Angle: {:.2}rad", state.sensor_angle);
+    let learning_rate_str = format!("Learning Rate: {:.3}", state.belief_learning_rate);
+    let target_str = format!("Target: {:.2}", state.target_concentration);
+
+    // Show accumulator levels with color coding
+    let surprise_level = (state.cumulative_surprise / 20.0).clamp(0.0, 1.0);
+    let frustration_level = (state.cumulative_frustration / 15.0).clamp(0.0, 1.0);
+
+    let surprise_color = if surprise_level > 0.8 {
+        Color::Red
+    } else if surprise_level > 0.5 {
+        Color::Yellow
+    } else {
+        Color::Green
+    };
+
+    let frustration_color = if frustration_level > 0.8 {
+        Color::Red
+    } else if frustration_level > 0.5 {
+        Color::Yellow
+    } else {
+        Color::Green
+    };
+
+    let lines = vec![
+        Line::from(Span::raw(sensor_dist_str)),
+        Line::from(Span::raw(sensor_angle_str)),
+        Line::from(Span::raw(learning_rate_str)),
+        Line::from(Span::raw(target_str)),
+        Line::from(Span::styled(
+            format!("Surprise: {:.1}", state.cumulative_surprise),
+            Style::default().fg(surprise_color),
+        )),
+        Line::from(Span::styled(
+            format!("Frustration: {:.1}", state.cumulative_frustration),
+            Style::default().fg(frustration_color),
+        )),
+    ];
+
+    let paragraph = Paragraph::new(lines);
     f.render_widget(paragraph, inner);
 }
 
@@ -529,6 +585,12 @@ mod tests {
             landmarks: vec![],
             landmark_count: 0,
             nav_target_index: None,
+            sensor_dist: 2.0,
+            sensor_angle: 0.5,
+            belief_learning_rate: 0.15,
+            target_concentration: 0.8,
+            cumulative_surprise: 5.0,
+            cumulative_frustration: 3.0,
         };
 
         terminal
@@ -558,7 +620,10 @@ mod tests {
         assert_eq!(main.x, 0);
 
         // Sidebar should be ~30% width
-        assert!(sidebar.len() == 4, "should have 4 sidebar panels");
+        assert!(
+            sidebar.len() == 5,
+            "should have 5 sidebar panels (Metrics, Morphology, MCTS, Landmarks, Spatial)"
+        );
         assert!(
             sidebar[0].width >= 28 && sidebar[0].width <= 32,
             "sidebar width: {}",
@@ -682,6 +747,12 @@ mod tests {
             landmarks: vec![],
             landmark_count: 0,
             nav_target_index: None,
+            sensor_dist: 2.0,
+            sensor_angle: 0.5,
+            belief_learning_rate: 0.15,
+            target_concentration: 0.8,
+            cumulative_surprise: 5.0,
+            cumulative_frustration: 3.0,
         };
 
         // Should not panic even with narrow width
@@ -724,6 +795,12 @@ mod tests {
             landmarks: vec![],
             landmark_count: 0,
             nav_target_index: None,
+            sensor_dist: 2.0,
+            sensor_angle: 0.5,
+            belief_learning_rate: 0.15,
+            target_concentration: 0.8,
+            cumulative_surprise: 5.0,
+            cumulative_frustration: 3.0,
         };
 
         let grid_lines: Vec<String> = (0..30).map(|_| ".".repeat(60)).collect();

@@ -2,6 +2,7 @@ pub mod agent;
 pub mod environment;
 pub mod inference;
 pub mod memory;
+pub mod morphology;
 pub mod params;
 pub mod planning;
 
@@ -13,3 +14,7 @@ pub use planning::ActionDetail;
 // Re-export inference types for convenience
 #[allow(unused_imports)]
 pub use inference::{BeliefState, GenerativeModel, PrecisionEstimator};
+
+// Re-export morphology for convenience
+#[allow(unused_imports)]
+pub use morphology::Morphology;

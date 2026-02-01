@@ -39,6 +39,14 @@ pub struct DashboardState {
     pub landmarks: Vec<LandmarkSnapshot>,
     pub landmark_count: usize,
     pub nav_target_index: Option<usize>,
+
+    // Morphology (System 2)
+    pub sensor_dist: f64,
+    pub sensor_angle: f64,
+    pub belief_learning_rate: f64,
+    pub target_concentration: f64,
+    pub cumulative_surprise: f64,
+    pub cumulative_frustration: f64,
 }
 
 /// Snapshot of a landmark for rendering.
@@ -120,6 +128,13 @@ impl DashboardState {
             landmarks,
             landmark_count: agent.episodic_memory.count(),
             nav_target_index,
+            // Morphology (System 2)
+            sensor_dist: agent.morphology.sensor_dist,
+            sensor_angle: agent.morphology.sensor_angle,
+            belief_learning_rate: agent.morphology.belief_learning_rate,
+            target_concentration: agent.morphology.target_concentration,
+            cumulative_surprise: agent.cumulative_surprise,
+            cumulative_frustration: agent.cumulative_frustration,
         }
     }
 }

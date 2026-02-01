@@ -19,6 +19,8 @@ pub struct GenerativeModel {
     pub prior_precision: PriorPrecision,
     /// Sensory precision (inverse observation noise)
     pub sensory_precision: SensoryPrecision,
+    /// Sensor angle offset (for dynamic observation function)
+    pub sensor_angle: f64,
 }
 
 /// Prior means over hidden states.
@@ -93,6 +95,7 @@ impl GenerativeModel {
                 left: INITIAL_SENSORY_PRECISION,
                 right: INITIAL_SENSORY_PRECISION,
             },
+            sensor_angle: SENSOR_ANGLE,
         }
     }
 
@@ -100,7 +103,6 @@ impl GenerativeModel {
     ///
     /// Returns `(predicted_left, predicted_right)` sensor readings.
     #[must_use]
-    #[allow(clippy::unused_self)] // Self reserved for future model parameters
     pub fn observation_function(&self, beliefs: &BeliefMean) -> (f64, f64) {
         // Base prediction is believed nutrient concentration
         let base = beliefs.nutrient;
@@ -108,10 +110,11 @@ impl GenerativeModel {
         // Sensor angle offset creates differential between left/right
         // This models how sensors at different angles sample different parts
         // of the gradient field
-        let gradient_factor = SENSOR_ANGLE.sin() * 0.2;
+        // Use dynamic sensor_angle from model
+        let gradient_factor = self.sensor_angle.sin() * 0.2;
 
-        // Left sensor is offset by +SENSOR_ANGLE from heading
-        // Right sensor is offset by -SENSOR_ANGLE from heading
+        // Left sensor is offset by +sensor_angle from heading
+        // Right sensor is offset by -sensor_angle from heading
         // In a gradient field, this creates a differential
         let predicted_left = base + gradient_factor * beliefs.angle.sin();
         let predicted_right = base - gradient_factor * beliefs.angle.sin();
@@ -126,9 +129,9 @@ impl GenerativeModel {
     ///
     /// Used for computing gradients of free energy w.r.t. beliefs.
     #[must_use]
-    #[allow(clippy::unused_self)] // Self reserved for future model parameters
     pub fn observation_jacobian(&self, beliefs: &BeliefMean) -> ObservationJacobian {
-        let gradient_factor = SENSOR_ANGLE.sin() * 0.2;
+        // Use dynamic sensor_angle from model
+        let gradient_factor = self.sensor_angle.sin() * 0.2;
 
         ObservationJacobian {
             // ∂g_L/∂nutrient = 1, ∂g_R/∂nutrient = 1
@@ -146,6 +149,11 @@ impl GenerativeModel {
     pub fn update_sensory_precision(&mut self, left: f64, right: f64) {
         self.sensory_precision.left = left;
         self.sensory_precision.right = right;
+    }
+
+    /// Update sensor angle for dynamic observation function.
+    pub fn update_sensor_angle(&mut self, sensor_angle: f64) {
+        self.sensor_angle = sensor_angle;
     }
 }
 

@@ -117,3 +117,13 @@ pub const MAX_SENSORY_PRECISION: f64 = 20.0;
 pub const UNCERTAINTY_GROWTH: f64 = 1.1;
 /// Uncertainty reduction factor after observation
 pub const UNCERTAINTY_REDUCTION: f64 = 0.95;
+
+// === Morphological Adaptation Parameters (System 2) ===
+/// Surprise accumulation threshold for triggering morphological changes
+pub const MORPH_SURPRISE_THRESHOLD: f64 = 20.0;
+/// Frustration accumulation threshold for triggering allostatic regulation
+pub const MORPH_FRUSTRATION_THRESHOLD: f64 = 15.0;
+/// Window size (ticks) for averaging surprise/frustration
+pub const MORPH_WINDOW_SIZE: u64 = 100;
+/// Decay rate for accumulators when below threshold
+pub const MORPH_ACCUMULATOR_DECAY: f64 = 0.98;
