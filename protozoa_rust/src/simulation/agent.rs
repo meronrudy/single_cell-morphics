@@ -9,13 +9,14 @@ use crate::simulation::inference::{
     variational_free_energy, vfe_gradient,
 };
 use crate::simulation::memory::{EpisodicMemory, SensorHistory, SensorSnapshot, SpatialGrid};
+use crate::simulation::morphology::Morphology;
 use crate::simulation::params::{
-    BASE_METABOLIC_COST, BELIEF_LEARNING_RATE, DISH_HEIGHT, DISH_WIDTH, EXHAUSTION_SPEED_FACTOR,
-    EXHAUSTION_THRESHOLD, EXPLORATION_SCALE, INTAKE_RATE, LANDMARK_ATTRACTION_SCALE,
-    LANDMARK_THRESHOLD, LANDMARK_VISIT_RADIUS, MAX_PRECISION, MAX_SPEED, MAX_VFE,
-    MCTS_REPLAN_INTERVAL, MCTS_URGENT_ENERGY, MIN_PRECISION, NOISE_SCALE, PANIC_THRESHOLD,
-    PANIC_TURN_RANGE, SENSOR_ANGLE, SENSOR_DIST, SPEED_METABOLIC_COST, TARGET_CONCENTRATION,
-    UNCERTAINTY_GROWTH, UNCERTAINTY_REDUCTION,
+    BASE_METABOLIC_COST, DISH_HEIGHT, DISH_WIDTH, EXHAUSTION_SPEED_FACTOR, EXHAUSTION_THRESHOLD,
+    EXPLORATION_SCALE, INTAKE_RATE, LANDMARK_ATTRACTION_SCALE, LANDMARK_THRESHOLD,
+    LANDMARK_VISIT_RADIUS, MAX_PRECISION, MAX_SPEED, MAX_VFE, MCTS_REPLAN_INTERVAL,
+    MCTS_URGENT_ENERGY, MIN_PRECISION, MORPH_ACCUMULATOR_DECAY, MORPH_FRUSTRATION_THRESHOLD,
+    MORPH_SURPRISE_THRESHOLD, MORPH_WINDOW_SIZE, NOISE_SCALE, PANIC_THRESHOLD, PANIC_TURN_RANGE,
+    SPEED_METABOLIC_COST, TARGET_CONCENTRATION, UNCERTAINTY_GROWTH, UNCERTAINTY_REDUCTION,
 };
 use crate::simulation::planning::{Action, AgentState, MCTSPlanner};
 use rand::Rng;
@@ -101,6 +102,16 @@ pub struct Protozoa {
     pub last_plan_tick: u64,
     /// Best action from last planning cycle
     pub planned_action: Action,
+
+    // === Morphological Adaptation (System 2) ===
+    /// Dynamic morphological parameters
+    pub morphology: Morphology,
+    /// Cumulative surprise (VFE) for morphogenesis
+    pub cumulative_surprise: f64,
+    /// Cumulative frustration (EFE) for allostatic regulation
+    pub cumulative_frustration: f64,
+    /// Tick count for morphology regulation window
+    pub morph_window_start: u64,
 }
 
 impl Protozoa {
@@ -136,6 +147,11 @@ impl Protozoa {
             planner: MCTSPlanner::new(),
             last_plan_tick: 0,
             planned_action: Action::Straight,
+            // Morphological Adaptation (System 2)
+            morphology: Morphology::new(),
+            cumulative_surprise: 0.0,
+            cumulative_frustration: 0.0,
+            morph_window_start: 0,
         }
     }
 
@@ -143,16 +159,20 @@ impl Protozoa {
     ///
     /// Detects concentration at two points (left and right sensors).
     pub fn sense(&mut self, dish: &PetriDish) {
+        // Use dynamic morphology parameters
+        let sensor_dist = self.morphology.sensor_dist;
+        let sensor_angle = self.morphology.sensor_angle;
+
         // Left Sensor
-        let theta_l = self.angle + SENSOR_ANGLE;
-        let x_l = self.x + SENSOR_DIST * theta_l.cos();
-        let y_l = self.y + SENSOR_DIST * theta_l.sin();
+        let theta_l = self.angle + sensor_angle;
+        let x_l = self.x + sensor_dist * theta_l.cos();
+        let y_l = self.y + sensor_dist * theta_l.sin();
         self.val_l = dish.get_concentration(x_l, y_l);
 
         // Right Sensor
-        let theta_r = self.angle - SENSOR_ANGLE;
-        let x_r = self.x + SENSOR_DIST * theta_r.cos();
-        let y_r = self.y + SENSOR_DIST * theta_r.sin();
+        let theta_r = self.angle - sensor_angle;
+        let x_r = self.x + sensor_dist * theta_r.cos();
+        let y_r = self.y + sensor_dist * theta_r.sin();
         self.val_r = dish.get_concentration(x_r, y_r);
     }
 
@@ -176,9 +196,10 @@ impl Protozoa {
         // Synchronize position beliefs with actual position (proprioception)
         self.beliefs.sync_position(self.x, self.y, self.angle);
 
-        // Compute VFE gradient and update beliefs
+        // Compute VFE gradient and update beliefs using dynamic learning rate
         let gradient = vfe_gradient(observations, &self.beliefs, &self.generative_model);
-        self.beliefs.update(&gradient, BELIEF_LEARNING_RATE);
+        let learning_rate = self.morphology.belief_learning_rate;
+        self.beliefs.update(&gradient, learning_rate);
 
         // Reduce uncertainty after incorporating observation
         self.beliefs.decrease_uncertainty(UNCERTAINTY_REDUCTION);
@@ -338,6 +359,22 @@ impl Protozoa {
         // Boundary Check
         self.x = self.x.clamp(0.0, dish.width);
         self.y = self.y.clamp(0.0, dish.height);
+
+        // === PHASE 8: MORPHOLOGICAL REGULATION (System 2) ===
+
+        // Accumulate surprise (VFE) and frustration (EFE)
+        self.cumulative_surprise += self.current_vfe;
+
+        // Compute current EFE for frustration accumulation
+        let predicted_beliefs = self.predict_beliefs_after_action(self.planned_action);
+        let current_efe = expected_free_energy(&predicted_beliefs, &self.generative_model);
+        // Only accumulate positive EFE (actual frustration, not epistemic opportunity)
+        if current_efe > 0.0 {
+            self.cumulative_frustration += current_efe;
+        }
+
+        // Regulate morphology when thresholds exceeded
+        self.regulate_morphology();
     }
 
     /// Select action by minimizing Expected Free Energy.
@@ -455,5 +492,66 @@ impl Protozoa {
     #[allow(dead_code)]
     pub fn belief_uncertainty(&self) -> f64 {
         self.beliefs.total_uncertainty()
+    }
+
+    /// Regulate morphology based on accumulated surprise and frustration.
+    ///
+    /// # System 2 Regulation
+    /// - **Structural Morphogenesis**: High surprise → adjust sensor geometry
+    /// - **Allostatic Regulation**: High frustration → adjust homeostatic targets
+    #[allow(clippy::cast_precision_loss)] // ticks_elapsed is small, precision loss acceptable
+    fn regulate_morphology(&mut self) {
+        let ticks_elapsed = self.tick_count.saturating_sub(self.morph_window_start);
+
+        // Only regulate if we've accumulated enough experience
+        if ticks_elapsed < MORPH_WINDOW_SIZE {
+            return;
+        }
+
+        // Compute average surprise and frustration over window
+        let avg_surprise = self.cumulative_surprise / ticks_elapsed as f64;
+        let avg_frustration = self.cumulative_frustration / ticks_elapsed as f64;
+
+        // === STRUCTURAL MORPHOGENESIS ===
+        // High average surprise indicates poor sensory predictions
+        // → Adjust sensor geometry to improve gradient detection
+        if avg_surprise > MORPH_SURPRISE_THRESHOLD {
+            let surprise_delta =
+                (avg_surprise - MORPH_SURPRISE_THRESHOLD) / MORPH_SURPRISE_THRESHOLD;
+            self.morphology.adjust_sensor_dist(surprise_delta);
+            self.morphology.adjust_sensor_angle(surprise_delta);
+            self.morphology.adjust_belief_learning_rate(surprise_delta);
+
+            // Update generative model with new sensor angle
+            self.generative_model
+                .update_sensor_angle(self.morphology.sensor_angle);
+
+            // Reset accumulator after morphogenesis
+            self.cumulative_surprise = 0.0;
+            self.morph_window_start = self.tick_count;
+        } else {
+            // Decay surprise accumulator if below threshold
+            self.cumulative_surprise *= MORPH_ACCUMULATOR_DECAY;
+        }
+
+        // === ALLOSTATIC REGULATION ===
+        // High average frustration indicates persistent inability to reach preferred states
+        // → Adjust homeostatic set-point (allostatic load)
+        if avg_frustration > MORPH_FRUSTRATION_THRESHOLD {
+            let frustration_delta =
+                (avg_frustration - MORPH_FRUSTRATION_THRESHOLD) / MORPH_FRUSTRATION_THRESHOLD;
+            self.morphology
+                .adjust_target_concentration(frustration_delta);
+
+            // Update generative model with new homeostatic target
+            self.generative_model.prior_mean.nutrient = self.morphology.target_concentration;
+
+            // Reset accumulator after allostatic adjustment
+            self.cumulative_frustration = 0.0;
+            self.morph_window_start = self.tick_count;
+        } else {
+            // Decay frustration accumulator if below threshold
+            self.cumulative_frustration *= MORPH_ACCUMULATOR_DECAY;
+        }
     }
 }
