@@ -165,7 +165,7 @@ Lower EFE is better (we minimize G).
 - **Episodic:** Stores up to 8 high-nutrient landmarks with reliability decay
 
 ### Morphogenetic Computation
-The agent implements true morphological computation where structure emerges endogenously from computation, satisfying axioms A1-A6:
+The agent implements morphological/morphogenetic/whatever were going with..... computation where structure emerges endogenously from computation, satisfying axioms A1-A6:
 
 - **System Model M = (Σ, Φ, R, C, B):**
   - Σ: Substrate (morphology, generative model, memory)
