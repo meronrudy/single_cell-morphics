@@ -11,10 +11,10 @@ use crate::simulation::inference::{
 use crate::simulation::memory::{EpisodicMemory, SensorHistory, SensorSnapshot, SpatialGrid};
 use crate::simulation::params::{
     BASE_METABOLIC_COST, BELIEF_LEARNING_RATE, DISH_HEIGHT, DISH_WIDTH, EXHAUSTION_SPEED_FACTOR,
-    EXHAUSTION_THRESHOLD, EXPLORATION_SCALE, INTAKE_RATE, LANDMARK_ATTRACTION_SCALE,
+    EXHAUSTION_THRESHOLD, EXPLORATION_SCALE, FRUSTRATION_THRESHOLD, INTAKE_RATE, LANDMARK_ATTRACTION_SCALE,
     LANDMARK_THRESHOLD, LANDMARK_VISIT_RADIUS, MAX_PRECISION, MAX_SPEED, MAX_VFE,
     MCTS_REPLAN_INTERVAL, MCTS_URGENT_ENERGY, MIN_PRECISION, NOISE_SCALE, PANIC_THRESHOLD,
-    PANIC_TURN_RANGE, SENSOR_ANGLE, SENSOR_DIST, SPEED_METABOLIC_COST, TARGET_CONCENTRATION,
+    PANIC_TURN_RANGE, SENSOR_ANGLE, SENSOR_DIST, SPEED_METABOLIC_COST, SURPRISE_THRESHOLD, TARGET_CONCENTRATION,
     UNCERTAINTY_GROWTH, UNCERTAINTY_REDUCTION,
 };
 use crate::simulation::planning::{Action, AgentState, MCTSPlanner};
@@ -45,6 +45,17 @@ fn assert_finite(value: f64, context: &str) -> f64 {
     if value.is_finite() { value } else { 0.0 }
 }
 
+/// Dynamic morphological parameters that can be modified by System 2 morphogenesis.
+#[derive(Debug, Clone, Copy)]
+pub struct Morphology {
+    /// Distance from body center to sensor.
+    pub sensor_dist: f64,
+    /// Sensor stereo spread in radians.
+    pub sensor_angle: f64,
+    /// Learning rate for belief updates via VFE gradient descent.
+    pub belief_learning_rate: f64,
+}
+
 /// Represents the single-cell organism (Agent) using Continuous Active Inference.
 ///
 /// The agent minimizes Variational Free Energy by updating Gaussian beliefs
@@ -59,6 +70,7 @@ fn assert_finite(value: f64, context: &str) -> f64 {
 /// - **Short-term memory**: Ring buffer of recent sensor experiences
 /// - **Long-term memory**: Spatial grid of learned nutrient expectations
 /// - **Episodic memory**: Landmarks for goal-directed navigation
+/// - **Morphogenesis**: System 2 regulator that adapts morphology based on stress
 #[derive(Debug, Clone)]
 pub struct Protozoa {
     // === Position and Movement ===
@@ -101,6 +113,18 @@ pub struct Protozoa {
     pub last_plan_tick: u64,
     /// Best action from last planning cycle
     pub planned_action: Action,
+
+    // === Morphogenesis (System 2) ===
+    /// Dynamic morphological parameters
+    pub morphology: Morphology,
+    /// Accumulated surprise (integral of VFE) for morphogenesis regulation
+    pub cumulative_surprise: f64,
+    /// Accumulated frustration (integral of EFE) for morphogenesis regulation
+    pub cumulative_frustration: f64,
+    /// Current structural complexity metric
+    pub current_complexity: f64,
+    /// History of complexity values for tracking evolution
+    pub complexity_history: Vec<f64>,
 }
 
 impl Protozoa {
@@ -136,6 +160,16 @@ impl Protozoa {
             planner: MCTSPlanner::new(),
             last_plan_tick: 0,
             planned_action: Action::Straight,
+            // Morphogenesis (System 2)
+            morphology: Morphology {
+                sensor_dist: SENSOR_DIST,
+                sensor_angle: SENSOR_ANGLE,
+                belief_learning_rate: BELIEF_LEARNING_RATE,
+            },
+            cumulative_surprise: 0.0,
+            cumulative_frustration: 0.0,
+            current_complexity: 0.0,
+            complexity_history: Vec::new(),
         }
     }
 
@@ -144,15 +178,15 @@ impl Protozoa {
     /// Detects concentration at two points (left and right sensors).
     pub fn sense(&mut self, dish: &PetriDish) {
         // Left Sensor
-        let theta_l = self.angle + SENSOR_ANGLE;
-        let x_l = self.x + SENSOR_DIST * theta_l.cos();
-        let y_l = self.y + SENSOR_DIST * theta_l.sin();
+        let theta_l = self.angle + self.morphology.sensor_angle;
+        let x_l = self.x + self.morphology.sensor_dist * theta_l.cos();
+        let y_l = self.y + self.morphology.sensor_dist * theta_l.sin();
         self.val_l = dish.get_concentration(x_l, y_l);
 
         // Right Sensor
-        let theta_r = self.angle - SENSOR_ANGLE;
-        let x_r = self.x + SENSOR_DIST * theta_r.cos();
-        let y_r = self.y + SENSOR_DIST * theta_r.sin();
+        let theta_r = self.angle - self.morphology.sensor_angle;
+        let x_r = self.x + self.morphology.sensor_dist * theta_r.cos();
+        let y_r = self.y + self.morphology.sensor_dist * theta_r.sin();
         self.val_r = dish.get_concentration(x_r, y_r);
     }
 
@@ -178,7 +212,7 @@ impl Protozoa {
 
         // Compute VFE gradient and update beliefs
         let gradient = vfe_gradient(observations, &self.beliefs, &self.generative_model);
-        self.beliefs.update(&gradient, BELIEF_LEARNING_RATE);
+        self.beliefs.update(&gradient, self.morphology.belief_learning_rate);
 
         // Reduce uncertainty after incorporating observation
         self.beliefs.decrease_uncertainty(UNCERTAINTY_REDUCTION);
@@ -186,6 +220,9 @@ impl Protozoa {
         // Compute and store current VFE for monitoring
         self.current_vfe =
             variational_free_energy(observations, &self.beliefs, &self.generative_model);
+
+        // Accumulate surprise for morphogenesis regulation
+        self.cumulative_surprise += self.current_vfe;
 
         // === PHASE 2: PRECISION LEARNING ===
 

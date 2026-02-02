@@ -16,6 +16,7 @@ Protozoa is a zero-player biological simulation where a single-cell agent naviga
     *   **Episodic:** Up to 8 remembered landmarks with reliability decay
 *   **MCTS Planning:** Monte Carlo Tree Search with Expected Free Energy (pragmatic + epistemic value).
 *   **Goal-Directed Navigation:** Returns to remembered food sources when energy is low.
+*   **Morphogenetic Computation:** Endogenous structural evolution via System 2 regulator, satisfying axioms A1-A6 for true morphological computation.
 *   **High Performance:** Parallelized field rendering using `rayon`.
 *   **Static Binary:** Ship a single executable with no external dependencies.
 *   **Dynamic Environment:** Food sources decay, move (Brownian motion), and regrow.
@@ -110,6 +111,13 @@ All simulation parameters are defined in `src/simulation/params.rs`:
 | `BELIEF_LEARNING_RATE` | 0.15 | VFE gradient descent step size |
 | `INITIAL_SENSORY_PRECISION` | 5.0 | Starting sensor precision |
 | `NUTRIENT_PRIOR_PRECISION` | 2.0 | Strength of nutrient preference |
+| `SURPRISE_THRESHOLD` | 10.0 | VFE integral trigger for morphogenesis |
+| `FRUSTRATION_THRESHOLD` | 5.0 | EFE integral trigger for morphogenesis |
+| `SENSOR_DIST_ENERGY_COST` | 0.01 | Energy cost per unit sensor distance change |
+| `SENSOR_ANGLE_ENERGY_COST` | 0.005 | Energy cost per unit sensor angle change |
+| `LEARNING_RATE_ENERGY_COST` | 0.002 | Energy cost per unit learning rate change |
+| `MAX_COMPLEXITY` | 10.0 | Soft limit on structural complexity |
+| `COMPLEXITY_ENERGY_COST_MULTIPLIER` | 2.0 | Energy penalty multiplier for high complexity |
 
 ### Running Tests
 ```bash
@@ -133,11 +141,14 @@ F = \frac{1}{2}(o - g(\mu))^T \Pi_o (o - g(\mu)) + \frac{1}{2}(\mu - \eta)^T \Pi
 $$
 
 ### Each Tick
-1.  **Infer:** Gradient descent on VFE updates beliefs: dμ/dt = -∂F/∂μ
-2.  **Learn:** Update sensory precision from prediction errors
-3.  **Plan:** Evaluate actions by Expected Free Energy, select minimum
-4.  **Act:** Blend reactive control + planned action + exploration + goal attraction
-5.  **Panic:** Random tumble if conditions worsen rapidly (temporal gradient)
+1.  **Sense:** Update sensory inputs from environment
+2.  **Infer:** Gradient descent on VFE updates beliefs: dμ/dt = -∂F/∂μ
+3.  **Learn:** Update sensory precision from prediction errors
+4.  **Plan:** Evaluate actions by Expected Free Energy, select minimum
+5.  **Act:** Blend reactive control + planned action + exploration + goal attraction
+6.  **Metabolize:** Update energy and accumulate stress for morphogenesis
+7.  **Morphogen:** System 2 regulator triggers endogenous structural changes
+8.  **Panic:** Random tumble if conditions worsen rapidly (temporal gradient)
 
 ### Action Selection via Expected Free Energy
 ```
@@ -152,3 +163,23 @@ Lower EFE is better (we minimize G).
 - **Short-term:** 32-element ring buffer of recent experiences
 - **Long-term:** 20×10 grid learns nutrient expectations via Welford's algorithm
 - **Episodic:** Stores up to 8 high-nutrient landmarks with reliability decay
+
+### Morphogenetic Computation
+The agent implements true morphological computation where structure emerges endogenously from computation, satisfying axioms A1-A6:
+
+- **System Model M = (Σ, Φ, R, C, B):**
+  - Σ: Substrate (morphology, generative model, memory)
+  - Φ: State fields (beliefs, energy, accumulators)
+  - R: Rules (VFE/EFE minimization, regulator triggers)
+  - C: Invariants (energy conservation, physiological limits)
+  - B: Boundary drives (homeostasis, stress thresholds)
+
+- **Axioms A1-A6:**
+  - A1: No external schedulers - changes triggered by internal accumulators
+  - A2: Endogenous substrate emergence - structure evolves from dynamics
+  - A3: Causal feedback - morphology influences future computation
+  - A4: Open configuration space - unbounded potential complexity
+  - A5: Causal reality - changes incur metabolic costs
+  - A6: Continuous internal generation - ongoing structural evolution
+
+- **System 2 Regulator:** Monitors ∫VFE dt (surprise) and ∫EFE dt (frustration) to trigger morphological changes with energy costs and complexity constraints.

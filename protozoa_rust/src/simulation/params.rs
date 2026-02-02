@@ -121,3 +121,45 @@ pub const UNCERTAINTY_REDUCTION: f64 = 0.95;
 // === Morphogenesis Parameters ===
 pub const SURPRISE_THRESHOLD: f64 = 2.0;
 pub const FRUSTRATION_THRESHOLD: f64 = 5.0;
+/// Energy cost per unit change in sensor_dist (proportional to change magnitude)
+pub const SENSOR_DIST_ENERGY_COST: f64 = 0.1;
+/// Energy cost per unit change in sensor_angle (proportional to change magnitude)
+pub const SENSOR_ANGLE_ENERGY_COST: f64 = 0.05;
+/// Energy cost per unit change in belief_learning_rate (proportional to change magnitude)
+pub const LEARNING_RATE_ENERGY_COST: f64 = 0.02;
+/// Maximum sensor distance (physiological limit)
+pub const MAX_SENSOR_DIST: f64 = 50.0;
+/// Minimum sensor distance (physiological limit)
+pub const MIN_SENSOR_DIST: f64 = 1.0;
+/// Maximum sensor angle in radians (physiological limit)
+pub const MAX_SENSOR_ANGLE: f64 = std::f64::consts::PI / 2.0;
+/// Minimum sensor angle in radians (physiological limit)
+pub const MIN_SENSOR_ANGLE: f64 = 0.1;
+/// Maximum belief learning rate (physiological limit)
+pub const MAX_LEARNING_RATE: f64 = 1.0;
+/// Minimum belief learning rate (physiological limit)
+pub const MIN_LEARNING_RATE: f64 = 0.001;
+
+/// === Structural Complexity Metrics ===
+/// Base complexity weight for morphological parameters
+pub const BASE_COMPLEXITY_WEIGHT: f64 = 1.0;
+/// Factor for sensor distance contribution to complexity (scales with range)
+pub const SENSOR_DIST_COMPLEXITY_FACTOR: f64 = 0.1;
+/// Factor for sensor angle contribution to complexity (scales with spread)
+pub const SENSOR_ANGLE_COMPLEXITY_FACTOR: f64 = 0.05;
+/// Factor for belief learning rate contribution to complexity (scales with adaptability)
+pub const LEARNING_RATE_COMPLEXITY_FACTOR: f64 = 0.02;
+/// Factor for generative model connection density (number of parameters)
+pub const CONNECTION_DENSITY_FACTOR: f64 = 0.001;
+/// Factor for hierarchical levels in generative model (depth of abstraction)
+pub const HIERARCHICAL_LEVEL_FACTOR: f64 = 0.5;
+/// Factor for fractal dimension approximation (self-similarity measure)
+pub const FRACTAL_DIMENSION_FACTOR: f64 = 0.2;
+
+/// === Complexity-Based Physiological Limits ===
+/// Maximum allowed structural complexity (soft limit, can be exceeded but with penalties)
+pub const MAX_COMPLEXITY: f64 = 10.0;
+/// Multiplier for energy costs when complexity exceeds MAX_COMPLEXITY
+pub const COMPLEXITY_ENERGY_COST_MULTIPLIER: f64 = 2.0;
+/// Complexity history buffer size for tracking evolution
+pub const COMPLEXITY_HISTORY_SIZE: usize = 100;
